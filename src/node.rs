@@ -2,19 +2,19 @@ use super::{helper::*, parent::*, wrapper::*};
 
 use std::{cell::*, marker::PhantomData, rc::*};
 
-pub type RNode<H, T> = Rc<RefCell<Node<H, T>>>;
-pub type WNode<H, T> = Weak<RefCell<Node<H, T>>>;
+pub type RNode<T, H> = Rc<RefCell<Node<T, H>>>;
+pub type WNode<T, H> = Weak<RefCell<Node<T, H>>>;
 
-#[derive(Debug, Default)]
-pub struct Node<H, T> {
-  parent: Option<Parent<H, T>>,
-  children: [Option<RNode<H, T>>; 2],
+#[derive(Default)]
+pub struct Node<T, H = DefaultHelper> {
+  parent: Option<Parent<T, H>>,
+  children: [Option<RNode<T, H>>; 2],
   size: usize, depth: usize,
   value: T,
   phantom: PhantomData<H>,
 }
 
-impl<H: Helper<T>, T> Node<H, T> {
+impl<H, T> Node<T, H> {
   pub fn new(value: T) -> Self {
     Self {
       parent: None,
@@ -25,19 +25,19 @@ impl<H: Helper<T>, T> Node<H, T> {
     }
   }
 
-  pub fn child(&self, dir: usize) -> Option<&RNode<H, T>> {
+  pub fn child(&self, dir: usize) -> Option<&RNode<T, H>> {
     self.children[dir].as_ref()
   }
 
-  pub fn child_mut(&mut self, dir: usize) -> &mut Option<RNode<H, T>> {
+  pub fn child_mut(&mut self, dir: usize) -> &mut Option<RNode<T, H>> {
     &mut self.children[dir]
   }
 
-  pub fn parent(&self) -> Option<&Parent<H, T>> {
+  pub fn parent(&self) -> Option<&Parent<T, H>> {
     self.parent.as_ref()
   }
 
-  pub fn parent_mut(&mut self) -> &mut Option<Parent<H, T>> {
+  pub fn parent_mut(&mut self) -> &mut Option<Parent<T, H>> {
     &mut self.parent
   }
 
@@ -66,7 +66,7 @@ impl<H: Helper<T>, T> Node<H, T> {
   }
 }
 
-impl<H, T: Clone> Clone for Node<H, T> {
+impl<T: Clone, H> Clone for Node<T, H> {
   fn clone(&self) -> Self {
     Self {
       parent: self.parent.clone(),
@@ -79,14 +79,33 @@ impl<H, T: Clone> Clone for Node<H, T> {
   }
 }
 
-impl<H: Helper<T>, T> Wrapper<H, T> for RNode<H, T> {
+impl<T, H: Helper<T>> Wrapper<T, H> for RNode<T, H> {
   /// unsafe
-  fn node(&self) -> &Node<H, T> {
+  fn node(&self) -> &Node<T, H> {
     unsafe { &*self.as_ptr() }
   }
 
   /// unsafe
-  fn node_mut(&self) -> &mut Node<H, T> {
+  fn node_mut(&self) -> &mut Node<T, H> {
     unsafe { &mut *self.as_ptr() }
+  }
+}
+
+impl<T: std::fmt::Debug, H> std::fmt::Debug for Node<T, H> {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    f.write_fmt(format_args!("Node(size={}, depth={}, value={:?}) [", self.size(), self.depth(), self.value()))?;
+    if let Some(child) = self.child(0) {
+      child.borrow().fmt(f)?;
+    } else {
+      f.write_str("Nil")?;
+    }
+    f.write_str(", ")?;
+    if let Some(child) = self.child(1) {
+      child.borrow().fmt(f)?;
+    } else {
+      f.write_str("Nil")?;
+    }
+    f.write_str("]")?;
+    Ok(())
   }
 }

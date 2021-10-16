@@ -1,10 +1,13 @@
-use std::cmp::Ordering::*;
+use std::{cell::RefCell, cmp::Ordering::*, rc::Rc};
 use super::{helper::*, node::*, parent::*};
 
-pub trait Wrapper<H: Helper<T>, T>: Sized {
-  // API
-  fn node(&self) -> &Node<H, T>;
-  fn node_mut(&self) -> &mut Node<H, T>;
+pub trait Wrapper<T, H: Helper<T> = DefaultHelper>: Sized {
+  fn node(&self) -> &Node<T, H>;
+  fn node_mut(&self) -> &mut Node<T, H>;
+
+  fn new(value: T) -> RNode<T, H> {
+    Rc::new(RefCell::new(Node::new(value)))
+  }
 
   /// 親が存在しない場合 `true`
   fn is_root(&self) -> bool {
@@ -12,12 +15,12 @@ pub trait Wrapper<H: Helper<T>, T>: Sized {
   }
 
   /// 親を返す
-  fn parent(&self) -> Option<Parent<H, T>> {
+  fn parent(&self) -> Option<Parent<T, H>> {
     self.node().parent().cloned()
   }
 
   /// 親を設定する
-  fn set_parent(&self, parent: Option<Parent<H, T>>) {
+  fn set_parent(&self, parent: Option<Parent<T, H>>) {
     // もとの親を切り離す
     self.take_parent();
     // 新しい親をつなぐ（親→子）
@@ -30,7 +33,7 @@ pub trait Wrapper<H: Helper<T>, T>: Sized {
   }
 
   /// 親を取り去る
-  fn take_parent(&self) -> Option<Parent<H, T>> {
+  fn take_parent(&self) -> Option<Parent<T, H>> {
     let parent = self.node_mut().parent_mut().take();
     if let Some(parent) = &parent {
       let dir = parent.dir();
@@ -40,12 +43,12 @@ pub trait Wrapper<H: Helper<T>, T>: Sized {
   }
 
   /// 子を返す
-  fn child(&self, dir: usize) -> Option<RNode<H, T>> {
+  fn child(&self, dir: usize) -> Option<RNode<T, H>> {
     self.node().child(dir).cloned()
   }
 
   /// 子を設定する
-  fn set_child(&self, dir: usize, child: Option<RNode<H, T>>) {
+  fn set_child(&self, dir: usize, child: Option<RNode<T, H>>) {
     // もとの子を切り離す
     self.take_child(dir);
     if let Some(child) = &child {
@@ -62,7 +65,7 @@ pub trait Wrapper<H: Helper<T>, T>: Sized {
   }
 
   /// 子を取り去る
-  fn take_child(&self, dir: usize) -> Option<RNode<H, T>> {
+  fn take_child(&self, dir: usize) -> Option<RNode<T, H>> {
     let child = self.node_mut().child_mut(dir).take();
     if let Some(child) = &child {
       child.set_parent(None);
@@ -87,7 +90,7 @@ pub trait Wrapper<H: Helper<T>, T>: Sized {
 
   /// `dir` 方向に回転する
   /// 新しく親になったノードを返す
-  fn rotate(&self, dir: usize) -> RNode<H, T> {
+  fn rotate(&self, dir: usize) -> RNode<T, H> {
     assert!(dir < 2);
     let child = self.node_mut().child_mut(1 ^ dir).take().unwrap();
     child.set_parent(self.take_parent());
@@ -98,8 +101,8 @@ pub trait Wrapper<H: Helper<T>, T>: Sized {
 
   // internal
 
-  fn to_ref(&self) -> &RNode<H, T> {
-    unsafe { std::mem::transmute::<_, &RNode<H, T>>(self) }
+  fn to_ref(&self) -> &RNode<T, H> {
+    unsafe { std::mem::transmute::<_, &RNode<T, H>>(self) }
   }
   
   fn zig(&self, dir: usize) {
@@ -143,7 +146,7 @@ pub trait Wrapper<H: Helper<T>, T>: Sized {
     }
   }
 
-  fn find<F: FnMut(&T) -> std::cmp::Ordering>(&self, mut f: F) -> Option<RNode<H, T>> {
+  fn find<F: FnMut(&T) -> std::cmp::Ordering>(&self, mut f: F) -> Option<RNode<T, H>> {
     let mut optnode = Some(self.to_ref().clone());
     while let Some(node) = optnode {
       match (f)(node.node().value()) {

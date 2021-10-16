@@ -1,7 +1,11 @@
-use std::{cell::RefCell, rc::Rc};
-
 use super::node::*;
 
 pub trait Helper<T>: Sized {
-  fn eval(node: &Rc<RefCell<Node<Self, T>>>);
+  fn eval(node: &RNode<T, Self>);
+}
+
+#[derive(Debug, Clone)]
+pub struct DefaultHelper;
+impl<T> Helper<T> for DefaultHelper {
+  fn eval(_: &RNode<T, Self>) {}
 }
