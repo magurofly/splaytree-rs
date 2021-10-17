@@ -61,4 +61,13 @@ impl<T, H: Helper<T>> Wrapper<T, H> for Parent<T, H> {
   fn node_mut(&self) -> &mut Node<T, H> {
     unsafe { &mut *self.get().as_ptr() }
   }
+
+  /// unsafe
+  fn to_ref(&self) -> &RNode<T, H> {
+    unsafe { std::mem::transmute::<_, &RNode<T, H>>(&self.get()) }
+  }
+
+  fn as_rnode(&self) -> RNode<T, H> {
+    self.get()
+  }
 }

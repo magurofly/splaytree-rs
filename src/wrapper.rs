@@ -4,6 +4,7 @@ use super::{helper::*, node::*, parent::*};
 pub trait Wrapper<T, H: Helper<T> = DefaultHelper>: Sized {
   fn node(&self) -> &Node<T, H>;
   fn node_mut(&self) -> &mut Node<T, H>;
+  fn as_rnode(&self) -> RNode<T, H>;
 
   fn new(value: T) -> RNode<T, H> {
     Rc::new(RefCell::new(Node::new(value)))
@@ -88,6 +89,15 @@ pub trait Wrapper<T, H: Helper<T> = DefaultHelper>: Sized {
     self.node().depth()
   }
 
+  /// 根を取得
+  fn root(&self) -> RNode<T, H> {
+    let mut node = self.as_rnode();
+    while let Some(parent) = node.parent() {
+      node = parent.as_rnode();
+    }
+    node
+  }
+
   /// `dir` 方向に回転する
   /// 新しく親になったノードを返す
   fn rotate(&self, dir: usize) -> RNode<T, H> {
@@ -97,6 +107,26 @@ pub trait Wrapper<T, H: Helper<T> = DefaultHelper>: Sized {
     self.set_child(1 ^ dir, child.take_child(dir));
     child.set_child(dir, Some(self.to_ref().clone()));
     child
+  }
+
+  /// 結合する
+  fn merge(&self, _other: &Self) {
+    todo!();
+  }
+
+  fn split_left(&self) -> Option<RNode<T, H>> {
+    self.splay();
+    self.take_child(0)
+  }
+
+  fn split_right(&self) -> Option<RNode<T, H>> {
+    self.splay();
+    self.take_child(1)
+  }
+
+  fn split_both(&self) -> [Option<RNode<T, H>>; 2] {
+    self.splay();
+    [self.take_child(0), self.take_child(1)]
   }
 
   // internal

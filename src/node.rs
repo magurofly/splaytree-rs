@@ -89,6 +89,10 @@ impl<T, H: Helper<T>> Wrapper<T, H> for RNode<T, H> {
   fn node_mut(&self) -> &mut Node<T, H> {
     unsafe { &mut *self.as_ptr() }
   }
+
+  fn as_rnode(&self) -> RNode<T, H> {
+    self.clone()
+  }
 }
 
 impl<T: std::fmt::Debug, H> std::fmt::Debug for Node<T, H> {
